@@ -1,5 +1,21 @@
 package utilz
 
+import (
+	"errors"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/printer"
+	"go/token"
+	"io"
+	"os"
+	"runtime"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/kr/pretty"
+)
+
 // Copyright 2016 Ryan Boehning. All rights reserved.
 // Use of this source code is governed by the MIT
 // license that can be found here:
@@ -25,21 +41,6 @@ package utilz
 //LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //SOFTWARE.
-import (
-	"errors"
-	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/printer"
-	"go/token"
-	"io"
-	"os"
-	"runtime"
-	"strings"
-	"unicode/utf8"
-
-	"github.com/kr/pretty"
-)
 
 // Q to stderr
 func Q(v ...interface{}) {

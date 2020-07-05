@@ -15,7 +15,6 @@ import (
 	"github.com/aybabtme/rgbterm"
 	tm "github.com/buger/goterm"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/gagliardetto/hashsearch"
 	"github.com/hako/durafmt"
 )
 
@@ -353,28 +352,7 @@ func ColorizeBG(str string) string {
 	colorizer := StringToColorBG(str)
 	return colorizer(str)
 }
-func StringToColor(str string) func(string) string {
-	r, g, b, _ := calcColor(int(hashsearch.HashString(str)))
 
-	bgColor := WhiteBG
-	if IsLight(r, g, b) {
-		bgColor = BlackBG
-	}
-	return func(str string) string {
-		return bgColor(rgbterm.FgString(str, uint8(r), uint8(g), uint8(b)))
-	}
-}
-func StringToColorBG(str string) func(string) string {
-	r, g, b, _ := calcColor(int(hashsearch.HashString(str)))
-
-	textColor := White
-	if IsLight(r, g, b) {
-		textColor = Black
-	}
-	return func(str string) string {
-		return textColor(rgbterm.BgString(str, uint8(r), uint8(g), uint8(b)))
-	}
-}
 func calcColor(color int) (red, green, blue, alpha int) {
 	alpha = color & 0xFF
 	blue = (color >> 8) & 0xFF
