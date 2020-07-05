@@ -344,14 +344,6 @@ func MustGetenv(key string) string {
 	}
 	return val
 }
-func Colorize(str string) string {
-	colorizer := StringToColor(str)
-	return colorizer(str)
-}
-func ColorizeBG(str string) string {
-	colorizer := StringToColorBG(str)
-	return colorizer(str)
-}
 
 func calcColor(color int) (red, green, blue, alpha int) {
 	alpha = color & 0xFF
