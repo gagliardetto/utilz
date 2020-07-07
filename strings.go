@@ -116,17 +116,17 @@ func Deduplicate(a []string) []string {
 	return res
 }
 
-func DeduplicateSlice(t interface{}, fn func(i int) string) interface{} {
+func DeduplicateSlice(slice interface{}, fn func(i int) string) interface{} {
 	// TODO: improve and test this func
 	var res []string
 
 	var result reflect.Value
 
-	switch reflect.TypeOf(t).Kind() {
+	switch reflect.TypeOf(slice).Kind() {
 	case reflect.Slice:
-		s := reflect.ValueOf(t)
+		s := reflect.ValueOf(slice)
 
-		myType := reflect.TypeOf(t).Elem()
+		myType := reflect.TypeOf(slice).Elem()
 		result = reflect.MakeSlice(reflect.SliceOf(myType), 0, 0)
 
 		for i := 0; i < s.Len(); i++ {
@@ -137,9 +137,27 @@ func DeduplicateSlice(t interface{}, fn func(i int) string) interface{} {
 			}
 		}
 	default:
-		panic(Sf("%s is not a slice, but a %s", reflect.TypeOf(t).Name(), reflect.TypeOf(t).Kind()))
+		panic(Sf("%s is not a slice, but a %s", reflect.TypeOf(slice).Name(), reflect.TypeOf(slice).Kind()))
 	}
 	return result.Interface()
+}
+func HasDuplicate(key string, slice interface{}, fn func(i int) string) bool {
+	// TODO: improve and test this func
+
+	switch reflect.TypeOf(slice).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(slice)
+
+		for i := 0; i < s.Len(); i++ {
+			out := fn(i)
+			if out == key {
+				return true
+			}
+		}
+	default:
+		panic(Sf("%s is not a slice, but a %s", reflect.TypeOf(slice).Name(), reflect.TypeOf(slice).Kind()))
+	}
+	return false
 }
 
 type ElasticStringIterator struct {
