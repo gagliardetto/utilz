@@ -1,7 +1,6 @@
 package utilz
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -213,14 +212,11 @@ func formatArgs(args ...interface{}) []string {
 // getCallerInfo returns the name, file, and line number of the function calling
 // q.Q().
 func getCallerInfo() (funcName, file string, line int, err error) {
-	const callDepth = 2 // user code calls q.Q() which calls std.log().
-	pc, file, line, ok := runtime.Caller(callDepth)
-	if !ok {
-		return "", "", 0, errors.New("failed to get info about the function calling q.Q")
-	}
-
-	funcName = runtime.FuncForPC(pc).Name()
-	return funcName, file, line, nil
+	pc := make([]uintptr, 10) // at least 1 entry needed
+	runtime.Callers(2, pc)
+	f := runtime.FuncForPC(pc[0])
+	file, line = f.FileLine(pc[0])
+	return f.Name(), file, line, nil
 }
 
 // prependArgName turns argument names and values into name=value strings, e.g.
