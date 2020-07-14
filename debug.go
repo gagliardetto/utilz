@@ -1,6 +1,7 @@
 package utilz
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"os"
@@ -374,4 +375,25 @@ func Sdump(a ...interface{}) string {
 }
 func BellSound() {
 	fmt.Print("\007")
+}
+
+type CombinedErrors struct {
+	errs []error
+}
+
+//
+func (ce *CombinedErrors) Error() string {
+	buf := new(bytes.Buffer)
+	buf.WriteString("The following errors occurred:")
+	for _, err := range ce.errs {
+		if err != nil {
+			buf.WriteString("\n -  " + err.Error())
+		}
+	}
+	return buf.String()
+}
+func CombineErrors(errs ...error) error {
+	return &CombinedErrors{
+		errs: errs,
+	}
 }
