@@ -3,6 +3,7 @@ package utilz
 import (
 	"bytes"
 	"fmt"
+	"hash/maphash"
 	"math"
 	"os"
 	"path/filepath"
@@ -346,6 +347,36 @@ func MustGetenv(key string) string {
 	return val
 }
 
+func StringToColor(str string) func(string) string {
+	r, g, b, _ := calcColor(int(HashString(str)))
+
+	bgColor := WhiteBG
+	if IsLight(r, g, b) {
+		bgColor = BlackBG
+	}
+	return func(str string) string {
+		return bgColor(rgbterm.FgString(str, uint8(r), uint8(g), uint8(b)))
+	}
+}
+func StringToColorBG(str string) func(string) string {
+	r, g, b, _ := calcColor(int(HashString(str)))
+
+	textColor := White
+	if IsLight(r, g, b) {
+		textColor = Black
+	}
+	return func(str string) string {
+		return textColor(rgbterm.BgString(str, uint8(r), uint8(g), uint8(b)))
+	}
+}
+func Colorize(str string) string {
+	colorizer := StringToColor(str)
+	return colorizer(str)
+}
+func ColorizeBG(str string) string {
+	colorizer := StringToColorBG(str)
+	return colorizer(str)
+}
 func calcColor(color int) (red, green, blue, alpha int) {
 	alpha = color & 0xFF
 	blue = (color >> 8) & 0xFF
@@ -396,4 +427,38 @@ func CombineErrors(errs ...error) error {
 	return &CombinedErrors{
 		errs: errs,
 	}
+}
+
+var hasherPool *sync.Pool
+
+func init() {
+	hasherPool = &sync.Pool{
+		New: func() interface{} {
+			return &maphash.Hash{}
+		},
+	}
+}
+func HashString(s string) uint64 {
+	h := hasherPool.Get().(*maphash.Hash)
+
+	defer hasherPool.Put(h)
+	h.Reset()
+	_, err := h.WriteString(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return h.Sum64()
+}
+func HashBytes(b []byte) uint64 {
+	h := hasherPool.Get().(*maphash.Hash)
+
+	defer hasherPool.Put(h)
+	h.Reset()
+	_, err := h.Write(b)
+	if err != nil {
+		panic(err)
+	}
+
+	return h.Sum64()
 }
