@@ -24,6 +24,11 @@ func Notify(handler Handler, signals ...os.Signal) {
 func DefaultNotify(handler func(os.Signal) bool) {
 	Notify(handler, os.Interrupt, os.Kill)
 }
+func WaitSystemSignal() {
+	DefaultNotify(func(_ os.Signal) bool {
+		return false
+	})
+}
 
 // WaitHasTimedout waits for the waitgroup for the specified max timeout.
 // Returns true if waiting timed out.
