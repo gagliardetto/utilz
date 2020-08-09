@@ -49,13 +49,27 @@ func Change(before int64, after int64) float64 {
 	return percentDiff
 }
 
-// generate number range including min and max:
-func GenerateIntRangeInclusive(min, max int) []int {
+// Generate number range including `from` and `to`.
+func GenerateIntRangeInclusive(from, to int) []int {
 	ints := []int{}
-	for i := min; i <= max; i++ {
-		ints = append(ints, i)
+	if from <= to {
+		for i := from; i <= to; i++ {
+			ints = append(ints, i)
+		}
+	} else {
+		for i := from; i >= to; i-- {
+			ints = append(ints, i)
+		}
 	}
 	return ints
+}
+
+// ReverseIntSlice reverses a slice integers.
+func ReverseIntSlice(ss []int) {
+	last := len(ss) - 1
+	for i := 0; i < len(ss)/2; i++ {
+		ss[i], ss[last-i] = ss[last-i], ss[i]
+	}
 }
 
 // NewUniqueInts removes elements that have duplicates in the original or new elements.
