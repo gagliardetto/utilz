@@ -1,6 +1,12 @@
 package utilz
 
-import "strconv"
+import (
+	crand "crypto/rand"
+	"math/big"
+	mathrand "math/rand"
+	"strconv"
+	"time"
+)
 
 // Percent calculate what is [percent]% of [number]
 // For Example 25% of 200 is 50
@@ -92,4 +98,21 @@ func DeduplicateInts(a []int) []int {
 	var res []int
 	res = UniqueAppendInts(res, a...)
 	return res
+}
+func ShuffleCryptoRand(a []int) {
+	for i := len(a) - 1; i > 0; i-- { // Fisher-Yates shuffle
+		jj, err := crand.Int(crand.Reader, big.NewInt(int64(i+1)))
+		if err != nil {
+			panic(err)
+		}
+		j := jj.Int64()
+		a[i], a[j] = a[j], a[i]
+	}
+}
+func ShuffleMathRand(a []int) {
+	mathrand.Seed(time.Now().UnixNano())
+	for i := len(a) - 1; i > 0; i-- { // Fisher-Yates shuffle
+		j := mathrand.Intn(i + 1)
+		a[i], a[j] = a[j], a[i]
+	}
 }
