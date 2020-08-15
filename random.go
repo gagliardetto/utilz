@@ -1,6 +1,8 @@
 package utilz
 
 import (
+	crand "crypto/rand"
+	"math/big"
 	"math/rand"
 	"time"
 )
@@ -36,10 +38,21 @@ func RandomString(n int) string {
 
 /// </RANDOM STRING GENERATOR>
 
-// RandomIntRange returns a random integer in the given range
+// RandomIntRange returns a random integer in the given range;
+// Randomness is from "math/rand" package.
 func RandomIntRange(min, max int) int {
 	rand.Seed(time.Now().UnixNano())
 	return rand.Intn(max-min) + min
+}
+
+// CryptoRandomIntRange returns a random integer in the given range.
+// Randomness is from "crypto/rand" package.
+func CryptoRandomIntRange(min, max int) int {
+	jj, err := crand.Int(crand.Reader, big.NewInt(int64(max-min)))
+	if err != nil {
+		panic(err)
+	}
+	return int(jj.Int64()) + min
 }
 
 // RandomIntRange returns a random integer in the given range
