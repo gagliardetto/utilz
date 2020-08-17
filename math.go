@@ -113,20 +113,38 @@ func DeduplicateInts(a []int) []int {
 	res = UniqueAppendInts(res, a...)
 	return res
 }
-func ShuffleCryptoRand(a []int) {
-	for i := len(a) - 1; i > 0; i-- { // Fisher-Yates shuffle
+
+func ShuffleMathRand(n int, swap func(i, j int)) {
+	if n < 0 {
+		panic("invalid argument to Shuffle")
+	}
+	mathrand.Seed(time.Now().UnixNano())
+	for i := n - 1; i > 0; i-- { // Fisher-Yates shuffle
+		j := mathrand.Intn(i + 1)
+		swap(i, j)
+	}
+}
+
+func ShuffleCryptoRand(n int, swap func(i, j int)) {
+	if n < 0 {
+		panic("invalid argument to Shuffle")
+	}
+	for i := n - 1; i > 0; i-- { // Fisher-Yates shuffle
 		jj, err := crand.Int(crand.Reader, big.NewInt(int64(i+1)))
 		if err != nil {
 			panic(err)
 		}
 		j := jj.Int64()
-		a[i], a[j] = a[j], a[i]
+		swap(i, int(j))
 	}
 }
-func ShuffleMathRand(a []int) {
-	mathrand.Seed(time.Now().UnixNano())
-	for i := len(a) - 1; i > 0; i-- { // Fisher-Yates shuffle
-		j := mathrand.Intn(i + 1)
+func ShuffleIntSliceMathRand(a []int) {
+	ShuffleMathRand(len(a), func(i, j int) {
 		a[i], a[j] = a[j], a[i]
-	}
+	})
+}
+func ShuffleIntSliceCryptoRand(a []int) {
+	ShuffleCryptoRand(len(a), func(i, j int) {
+		a[i], a[j] = a[j], a[i]
+	})
 }
