@@ -62,6 +62,13 @@ func GetCallerLocation(callDepth int) (string, int) {
 	return getBaseFilename(file), line
 }
 
+func ThisFuncName() string {
+	pc := make([]uintptr, 10)
+	runtime.Callers(2, pc)
+	fn := runtime.FuncForPC(pc[0])
+	return fn.Name()
+}
+
 func getBaseFilename(filename string) string {
 	return filepath.Base(filename)
 }
