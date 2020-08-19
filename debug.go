@@ -55,9 +55,9 @@ var (
 	LogIncludeLevel bool = true
 )
 
-// GetLocation returns the source location of the call at callDepth stack
+// GetCallerLocation returns the source location of the call at callDepth stack
 // frames above the call.
-func GetLocation(callDepth int) (string, int) {
+func GetCallerLocation(callDepth int) (string, int) {
 	_, file, line, _ := runtime.Caller(callDepth + 1)
 	return getBaseFilename(file), line
 }
@@ -70,7 +70,7 @@ type LogHeaderParameter func() string
 
 // LogParamCallStack adds the file and line number of the log call to the log message.
 func LogParamCallStack() string {
-	file, line := GetLocation(3)
+	file, line := GetCallerLocation(3)
 	return Sf("%s:%v", file, line)
 }
 
