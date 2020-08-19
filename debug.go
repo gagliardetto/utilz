@@ -168,6 +168,29 @@ var (
 )
 
 func DebugfWithParameters(params []LogHeaderParameter, format string, a ...interface{}) {
+	header := getHeader(params)
+
+	fmt.Fprintln(
+		os.Stderr,
+		header,
+		fmt.Sprintf(
+			format,
+			a...,
+		),
+	)
+}
+func DebuglnWithParameters(params []LogHeaderParameter, a ...interface{}) {
+	header := getHeader(params)
+
+	fmt.Fprintln(
+		os.Stderr,
+		header,
+		fmt.Sprintln(
+			a...,
+		),
+	)
+}
+func getHeader(params []LogHeaderParameter) string {
 	logMu.Lock()
 	defer logMu.Unlock()
 
@@ -191,14 +214,8 @@ func DebugfWithParameters(params []LogHeaderParameter, format string, a ...inter
 		logMessageCounter++
 		logLastMessageRunTime = time.Now()
 	}
-	fmt.Fprintln(
-		os.Stderr,
-		header,
-		fmt.Sprintf(
-			format,
-			a...,
-		),
-	)
+
+	return header
 }
 func Debugf(format string, a ...interface{}) {
 	DebugfWithParameters(
@@ -243,6 +260,16 @@ func Fatalf(format string, a ...interface{}) {
 			LogParamCallStack,
 		),
 		RedBG(format),
+		a...,
+	)
+	os.Exit(1)
+}
+func Fataln(a ...interface{}) {
+	DebuglnWithParameters(
+		append(
+			newParamsWithLogLevel(FatalPrefix),
+			LogParamCallStack,
+		),
 		a...,
 	)
 	os.Exit(1)
