@@ -46,9 +46,10 @@ func Errorln(a ...interface{}) (n int, err error) {
 var (
 	DebugPrefix   string = "[DEBU]"
 	InfoPrefix    string = "[INFO]"
+	SuccessPrefix string = Lime("[SUCC]")
 	WarnPrefix    string = Yellow("[WARN]")
 	ErrorPrefix   string = RedBG("[ERRO]")
-	SuccessPrefix string = Lime("[SUCC]")
+	FatalPrefix   string = RedBG("[FATAL]")
 )
 var (
 	LogIncludeLevel bool = true
@@ -228,10 +229,15 @@ func Errorf(format string, a ...interface{}) {
 		a...,
 	)
 }
-
-// Fatal is equivalent to Printf() followed by a call to os.Exit(1).
-func Fatalf(format string, v ...interface{}) {
-	Errorf(format, v...)
+func Fatalf(format string, a ...interface{}) {
+	DebugfWithParameters(
+		append(
+			newParamsWithLogLevel(FatalPrefix),
+			LogParamCallStack,
+		),
+		RedBG(format),
+		a...,
+	)
 	os.Exit(1)
 }
 
