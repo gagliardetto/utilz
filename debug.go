@@ -2,6 +2,7 @@ package utilz
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"hash/maphash"
 	"math"
@@ -501,4 +502,21 @@ func HashBytes(b []byte) uint64 {
 	}
 
 	return h.Sum64()
+}
+func HashAnyWithJSON(v interface{}) (uint64, error) {
+	// NOTE: this relies on the feature of json.Marshal that
+	// sorts map keys in a constant way.
+	b, err := json.Marshal(v)
+	if err != nil {
+		return 0, err
+	}
+	return HashBytes(b), nil
+}
+
+func MustHashAnyWithJSON(v interface{}) uint64 {
+	h, err := HashAnyWithJSON(v)
+	if err != nil {
+		panic(err)
+	}
+	return h
 }
