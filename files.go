@@ -386,3 +386,25 @@ func CountLines(r io.Reader) (int, error) {
 		}
 	}
 }
+
+// NewSectionReader creates a SectionReader from the provided file.
+func NewSectionReader(file *os.File) *io.SectionReader {
+	return io.NewSectionReader(file, 0, SizeOfFile(file))
+}
+
+// Size returns the size in bytes of the file.
+func SizeOfFile(file *os.File) int64 {
+	err := file.Sync()
+	if err != nil {
+		// TODO: not panic??
+		panic(err)
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		// TODO: not panic??
+		panic(err)
+	}
+
+	return info.Size()
+}
