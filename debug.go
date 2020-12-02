@@ -389,7 +389,7 @@ func MustGetenv(key string) string {
 }
 
 func StringToColor(str string) func(string) string {
-	r, g, b, _ := calcColor(int(HashString(str)))
+	r, g, b, _ := calcColor(HashString(str))
 
 	bgColor := WhiteBG
 	if IsLight(r, g, b) {
@@ -400,7 +400,7 @@ func StringToColor(str string) func(string) string {
 	}
 }
 func StringToColorBG(str string) func(string) string {
-	r, g, b, _ := calcColor(int(HashString(str)))
+	r, g, b, _ := calcColor(HashString(str))
 
 	textColor := White
 	if IsLight(r, g, b) {
@@ -418,7 +418,7 @@ func ColorizeBG(str string) string {
 	colorizer := StringToColorBG(str)
 	return colorizer(str)
 }
-func calcColor(color int) (red, green, blue, alpha int) {
+func calcColor(color uint64) (red, green, blue, alpha uint64) {
 	alpha = color & 0xFF
 	blue = (color >> 8) & 0xFF
 	green = (color >> 16) & 0xFF
@@ -428,7 +428,7 @@ func calcColor(color int) (red, green, blue, alpha int) {
 }
 
 // IsLight returns whether the color is perceived to be a light color
-func IsLight(rr, gg, bb int) bool {
+func IsLight(rr, gg, bb uint64) bool {
 
 	r := float64(rr)
 	g := float64(gg)
