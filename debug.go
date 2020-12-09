@@ -78,7 +78,7 @@ type LogHeaderParameter func() string
 
 // LogParamCallStack adds the file and line number of the log call to the log message.
 func LogParamCallStack() string {
-	file, line := GetCallerLocation(3)
+	file, line := GetCallerLocation(4)
 	return Sf("%s:%v", file, line)
 }
 
