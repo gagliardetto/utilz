@@ -80,11 +80,11 @@ func NewUniqueElements(orig []string, add ...string) []string {
 
 	for _, av := range add {
 		found := false
-		s := strings.ToLower(av)
+		s := av
 
 		// Check the original slice for duplicates
 		for _, ov := range orig {
-			if s == strings.ToLower(ov) {
+			if s == ov {
 				found = true
 				break
 			}
