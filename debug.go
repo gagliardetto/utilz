@@ -464,7 +464,18 @@ func (ce *CombinedErrors) Error() string {
 	}
 	return buf.String()
 }
+func allNil(errs ...error) bool {
+	for _, err := range errs {
+		if err != nil {
+			return false
+		}
+	}
+	return true
+}
 func CombineErrors(errs ...error) error {
+	if len(errs) == 0 || allNil(errs...) {
+		return nil
+	}
 	return &CombinedErrors{
 		errs: errs,
 	}
