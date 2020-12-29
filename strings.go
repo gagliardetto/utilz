@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gagliardetto/hashsearch"
 	"github.com/miekg/dns"
 )
 
@@ -110,15 +111,18 @@ func NewUniqueElements(orig []string, add ...string) []string {
 func UniqueAppend(orig []string, add ...string) []string {
 	return append(orig, NewUniqueElements(orig, add...)...)
 }
+
+// Deduplicate returns a deduplicated copy of a.
 func Deduplicate(a []string) []string {
 	var res []string
 	res = UniqueAppend(res, a...)
 	return res
 }
 
+// DeduplicateSlice returns a deduplicated copy of provided slice.
 func DeduplicateSlice(slice interface{}, fn func(i int) string) interface{} {
 	// TODO: improve and test this func
-	var res []string
+	storeIndex := hashsearch.New()
 
 	var result reflect.Value
 
@@ -130,10 +134,10 @@ func DeduplicateSlice(slice interface{}, fn func(i int) string) interface{} {
 		result = reflect.MakeSlice(reflect.SliceOf(myType), 0, 0)
 
 		for i := 0; i < s.Len(); i++ {
-			out := fn(i)
-			if !SliceContains(res, out) {
+			id := fn(i)
+			if !storeIndex.Has(id) {
 				result = reflect.Append(result, s.Index(i))
-				res = append(res, out)
+				storeIndex.OrderedAppend(id)
 			}
 		}
 	default:
@@ -141,6 +145,68 @@ func DeduplicateSlice(slice interface{}, fn func(i int) string) interface{} {
 	}
 	return result.Interface()
 }
+
+// DeduplicateSlice2 deduplicates a slice by modifying it.
+func DeduplicateSlice2(slice interface{}, fn func(i int) string) {
+	// TODO: improve and test this func
+
+	storeIndex := hashsearch.New()
+
+	if reflect.TypeOf(slice).Kind() != reflect.Ptr {
+		panic(Sf("Expected a pointer to a slice, but got a %s", reflect.TypeOf(slice).Kind()))
+	}
+
+	ptrElemKind := reflect.TypeOf(slice).Elem().Kind()
+	switch ptrElemKind {
+	case reflect.Slice:
+		rv := reflect.Indirect(reflect.ValueOf(slice))
+
+		indexesToRemove := make([]int, 0)
+
+		// Gather indexes of duplicate elements that will be removed:
+		for i := 0; i < rv.Len(); i++ {
+			id := fn(i)
+			if !storeIndex.Has(id) {
+				storeIndex.OrderedAppend(id)
+			} else {
+				indexesToRemove = append(indexesToRemove, i)
+			}
+		}
+
+		// Create an update-able map of indexes:
+		im := make(map[int]int)
+		for _, i := range indexesToRemove {
+			im[i] = i
+		}
+		// Remove duplicates:
+		for _, i := range indexesToRemove {
+			ri := im[i]
+			deleteElementAtIndexFromSlice(rv, ri, im)
+		}
+	default:
+		panic(Sf("Expected a pointer to a slice, but got a pointer to a %s", ptrElemKind))
+	}
+}
+
+//
+func deleteElementAtIndexFromSlice(rv reflect.Value, index int, im map[int]int) bool {
+	if index > rv.Len()-1 {
+		return false
+	}
+
+	zero := reflect.Zero(reflect.TypeOf(rv.Interface()).Elem())
+
+	lastIndex := rv.Len() - 1
+	if _, ok := im[lastIndex]; ok {
+		im[lastIndex] = index // Update index of last element.
+	}
+	// Remove the element at index i from rv.
+	rv.Index(index).Set(rv.Index(lastIndex)) // Copy last element to index i.
+	rv.Index(lastIndex).Set(zero)            // Erase last element (write zero value).
+	rv.Set(rv.Slice(0, lastIndex))           // Truncate slice.
+	return true
+}
+
 func HasDuplicate(key string, slice interface{}, fn func(i int) string) bool {
 	// TODO: improve and test this func
 
