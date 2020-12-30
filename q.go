@@ -1,6 +1,7 @@
 package utilz
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -49,6 +50,13 @@ func Q(v ...interface{}) {
 // Q to stdout
 func Qs(v ...interface{}) {
 	qqq(os.Stdout, v...)
+}
+
+// Q to a string
+func Sq(v ...interface{}) string {
+	bf := new(bytes.Buffer)
+	qqq(bf, v...)
+	return bf.String()
 }
 func qqq(dst io.Writer, v ...interface{}) {
 	args := formatArgs(v...)
