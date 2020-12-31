@@ -575,3 +575,19 @@ func ToLower(s string) string {
 func ToTitle(s string) string {
 	return strings.ToTitle(s)
 }
+
+// Map maps the provided slice.
+func Map(slice interface{}, fn func(i int) string) []string {
+	var res []string
+	switch reflect.TypeOf(slice).Kind() {
+	case reflect.Slice:
+		rv := reflect.ValueOf(slice)
+
+		for i := 0; i < rv.Len(); i++ {
+			res = append(res, fn(i))
+		}
+	default:
+		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
+	}
+	return res
+}
