@@ -128,20 +128,20 @@ func DeduplicateSlice(slice interface{}, fn func(i int) string) interface{} {
 
 	switch reflect.TypeOf(slice).Kind() {
 	case reflect.Slice:
-		s := reflect.ValueOf(slice)
+		rv := reflect.ValueOf(slice)
 
 		myType := reflect.TypeOf(slice).Elem()
 		result = reflect.MakeSlice(reflect.SliceOf(myType), 0, 0)
 
-		for i := 0; i < s.Len(); i++ {
+		for i := 0; i < rv.Len(); i++ {
 			id := fn(i)
 			if !storeIndex.Has(id) {
-				result = reflect.Append(result, s.Index(i))
+				result = reflect.Append(result, rv.Index(i))
 				storeIndex.OrderedAppend(id)
 			}
 		}
 	default:
-		panic(Sf("%s is not a slice, but a %s", reflect.TypeOf(slice).Name(), reflect.TypeOf(slice).Kind()))
+		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
 	}
 	return result.Interface()
 }
@@ -221,7 +221,7 @@ func HasDuplicate(key string, slice interface{}, fn func(i int) string) bool {
 			}
 		}
 	default:
-		panic(Sf("%s is not a slice, but a %s", reflect.TypeOf(slice).Name(), reflect.TypeOf(slice).Kind()))
+		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
 	}
 	return false
 }
@@ -576,8 +576,8 @@ func ToTitle(s string) string {
 	return strings.ToTitle(s)
 }
 
-// Map maps the provided slice.
-func Map(slice interface{}, fn func(i int) string) []string {
+// MapSlice maps the provided slice.
+func MapSlice(slice interface{}, fn func(i int) string) []string {
 	var res []string
 	switch reflect.TypeOf(slice).Kind() {
 	case reflect.Slice:
@@ -590,4 +590,28 @@ func Map(slice interface{}, fn func(i int) string) []string {
 		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
 	}
 	return res
+}
+
+// FilterSlice filters the provided slice.
+func FilterSlice(slice interface{}, fn func(i int) bool) interface{} {
+	// TODO: improve and test this func
+	var result reflect.Value
+
+	switch reflect.TypeOf(slice).Kind() {
+	case reflect.Slice:
+		rv := reflect.ValueOf(slice)
+
+		myType := reflect.TypeOf(slice).Elem()
+		result = reflect.MakeSlice(reflect.SliceOf(myType), 0, 0)
+
+		for i := 0; i < rv.Len(); i++ {
+			include := fn(i)
+			if include {
+				result = reflect.Append(result, rv.Index(i))
+			}
+		}
+	default:
+		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
+	}
+	return result.Interface()
 }
