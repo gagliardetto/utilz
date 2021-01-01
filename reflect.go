@@ -161,7 +161,7 @@ func FilterSlice(slice interface{}, fn func(i int) bool) interface{} {
 // and one return argument.
 // Map returns an array of the mapper return argument type.
 func Map(elem interface{}, mapper interface{}) interface{} {
-	res, err := doMap(elem, mapper, passThroughFilter)
+	res, err := mapWithFilter(elem, mapper, passThroughFilter)
 	if err != nil {
 		panic(err)
 	}
@@ -180,7 +180,7 @@ func nilFilter(rv reflect.Value) bool {
 	}
 	return false
 }
-func doMap(cont interface{}, mapper interface{}, filter func(reflect.Value) bool) (interface{}, error) {
+func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Value) bool) (interface{}, error) {
 	// mapper must be a func:
 	if mapperKind := reflect.TypeOf(mapper).Kind(); mapperKind != reflect.Func {
 		return nil, fmt.Errorf("mapper is not a func, but a %s", mapperKind)
