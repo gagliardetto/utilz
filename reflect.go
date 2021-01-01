@@ -3,6 +3,7 @@ package utilz
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gagliardetto/hashsearch"
@@ -181,6 +182,9 @@ func nilFilter(rv reflect.Value) bool {
 var emptyInt int
 var integerType = reflect.ValueOf(emptyInt).Type()
 
+var emptyBool bool
+var boolType = reflect.ValueOf(emptyBool).Type()
+
 func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Value) bool) (interface{}, error) {
 	// mapper must be a func:
 	if mapperKind := reflect.TypeOf(mapper).Kind(); mapperKind != reflect.Func {
@@ -269,6 +273,121 @@ func example_Map() {
 		}
 		out := Map(mp, func(key string) interface{} {
 			return mp[key]
+		}).([]interface{})
+		spew.Dump(out)
+	}
+}
+
+// Filter filters a slice/array/map with the provided filter function.
+// The filter must be a function
+// with one parameter (an int for slices/arrays, or the map key type for maps),
+// and one return argument (a bool).
+// Filter returns an array of the slice/array/map element type.
+func Filter(cont interface{}, filter interface{}) interface{} {
+	out, err := doFilter(cont, filter)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
+	// filter must be a func:
+	if mapperKind := reflect.TypeOf(filter).Kind(); mapperKind != reflect.Func {
+		return nil, fmt.Errorf("filter is not a func, but a %s", mapperKind)
+	}
+
+	ff := reflect.ValueOf(filter)
+	containerType := reflect.TypeOf(cont)
+	inType := ff.Type().In(0)
+	outType := ff.Type().Out(0)
+
+	// filter must have one parameter:
+	if ff.Type().NumIn() != 1 {
+		return nil, fmt.Errorf("wrong number of parameters for filter func: want 1, got %v", ff.Type().NumIn())
+	}
+	// filter must have one return value:
+	if ff.Type().NumOut() != 1 {
+		return nil, fmt.Errorf("wrong number of return arguments for filter func: want 1, got %v", ff.Type().NumOut())
+	}
+	// filter return type must be a bool:
+	if !reflect.DeepEqual(outType, boolType) {
+		return nil, fmt.Errorf("filter func return arg must be a bool, but got %s", outType.Kind())
+	}
+
+	rv := reflect.ValueOf(cont)
+	result := reflect.MakeSlice(reflect.SliceOf(containerType.Elem()), 0, 0)
+
+	switch containerType.Kind() {
+	case reflect.Slice, reflect.Array:
+		if !reflect.DeepEqual(inType, integerType) {
+			return nil, fmt.Errorf("filter func arg must be an int, but got %s", inType.Kind())
+		}
+		// Iterate over the slice/array, and call the filter:
+		for index := 0; index < rv.Len(); index++ {
+			returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})[0]
+			if returned.Bool() {
+				result = reflect.Append(result, rv.Index(index))
+			}
+		}
+	case reflect.Map:
+		mapKeyType := containerType.Key()
+		if !reflect.DeepEqual(inType, mapKeyType) {
+			return nil, fmt.Errorf("filter func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
+		}
+		// Iterate over the map, and call the filter:
+		for _, key := range rv.MapKeys() {
+			returned := ff.Call([]reflect.Value{key})[0]
+			if returned.Bool() {
+				result = reflect.Append(result, rv.MapIndex(key))
+			}
+		}
+	}
+	return result.Interface(), nil
+}
+func example_Filter() {
+	{
+		sl := []string{"a", "b"}
+		out := Filter(sl, func(i int) bool {
+			return sl[i] == "b"
+		}).([]string)
+		spew.Dump(out)
+	}
+	{
+		sl := []int{1, 2}
+		out := Filter(sl, func(i int) bool {
+			return sl[i] == 1
+		}).([]int)
+		spew.Dump(out)
+	}
+	{
+		sl := [2]int{333, 444}
+		out := Filter(sl, func(i int) bool {
+			return sl[i] == 444
+		}).([]int)
+		spew.Dump(out)
+	}
+	{
+		mp := map[string]string{
+			"hello": "world",
+			"foo":   "bar",
+		}
+		out := Filter(mp, func(key string) bool {
+			return key == "foo"
+		}).([]string)
+		spew.Dump(out)
+	}
+	{
+		mp := map[string]interface{}{
+			"alpha": nil,
+			"beta":  "beta-value",
+			"gamma": "gamma-value",
+		}
+		out := Filter(mp, func(key string) bool {
+			val, ok := mp[key].(string)
+			if ok {
+				return strings.Contains(val, "-value")
+			}
+			return false
 		}).([]interface{})
 		spew.Dump(out)
 	}
