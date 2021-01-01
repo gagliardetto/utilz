@@ -3,13 +3,11 @@ package utilz
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/gagliardetto/hashsearch"
 	"github.com/miekg/dns"
 )
 
@@ -117,113 +115,6 @@ func Deduplicate(a []string) []string {
 	var res []string
 	res = UniqueAppend(res, a...)
 	return res
-}
-
-// DeduplicateSlice returns a deduplicated copy of provided slice.
-func DeduplicateSlice(slice interface{}, fn func(i int) string) interface{} {
-	// TODO: improve and test this func
-	storeIndex := hashsearch.New()
-
-	var result reflect.Value
-
-	switch reflect.TypeOf(slice).Kind() {
-	case reflect.Slice:
-		rv := reflect.ValueOf(slice)
-
-		myType := reflect.TypeOf(slice).Elem()
-		result = reflect.MakeSlice(reflect.SliceOf(myType), 0, 0)
-
-		for i := 0; i < rv.Len(); i++ {
-			id := fn(i)
-			if !storeIndex.Has(id) {
-				result = reflect.Append(result, rv.Index(i))
-				storeIndex.OrderedAppend(id)
-			}
-		}
-	default:
-		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
-	}
-	return result.Interface()
-}
-
-// DeduplicateSlice2 deduplicates a slice by modifying it.
-func DeduplicateSlice2(slice interface{}, fn func(i int) string) {
-	// TODO: improve and test this func
-
-	storeIndex := hashsearch.New()
-
-	if reflect.TypeOf(slice).Kind() != reflect.Ptr {
-		panic(Sf("Expected a pointer to a slice, but got a %s", reflect.TypeOf(slice).Kind()))
-	}
-
-	ptrElemKind := reflect.TypeOf(slice).Elem().Kind()
-	switch ptrElemKind {
-	case reflect.Slice:
-		rv := reflect.Indirect(reflect.ValueOf(slice))
-
-		indexesToRemove := make([]int, 0)
-
-		// Gather indexes of duplicate elements that will be removed:
-		for i := 0; i < rv.Len(); i++ {
-			id := fn(i)
-			if !storeIndex.Has(id) {
-				storeIndex.OrderedAppend(id)
-			} else {
-				indexesToRemove = append(indexesToRemove, i)
-			}
-		}
-
-		// Create an update-able map of indexes:
-		im := make(map[int]int)
-		for _, i := range indexesToRemove {
-			im[i] = i
-		}
-		// Remove duplicates:
-		for _, i := range indexesToRemove {
-			ri := im[i]
-			deleteElementAtIndexFromSlice(rv, ri, im)
-		}
-	default:
-		panic(Sf("Expected a pointer to a slice, but got a pointer to a %s", ptrElemKind))
-	}
-}
-
-//
-func deleteElementAtIndexFromSlice(rv reflect.Value, index int, im map[int]int) bool {
-	if index > rv.Len()-1 {
-		return false
-	}
-
-	zero := reflect.Zero(reflect.TypeOf(rv.Interface()).Elem())
-
-	lastIndex := rv.Len() - 1
-	if _, ok := im[lastIndex]; ok {
-		im[lastIndex] = index // Update index of last element.
-	}
-	// Remove the element at index i from rv.
-	rv.Index(index).Set(rv.Index(lastIndex)) // Copy last element to index i.
-	rv.Index(lastIndex).Set(zero)            // Erase last element (write zero value).
-	rv.Set(rv.Slice(0, lastIndex))           // Truncate slice.
-	return true
-}
-
-func HasDuplicate(key string, slice interface{}, fn func(i int) string) bool {
-	// TODO: improve and test this func
-
-	switch reflect.TypeOf(slice).Kind() {
-	case reflect.Slice:
-		s := reflect.ValueOf(slice)
-
-		for i := 0; i < s.Len(); i++ {
-			out := fn(i)
-			if out == key {
-				return true
-			}
-		}
-	default:
-		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
-	}
-	return false
 }
 
 type ElasticStringIterator struct {
@@ -574,44 +465,4 @@ func ToLower(s string) string {
 }
 func ToTitle(s string) string {
 	return strings.ToTitle(s)
-}
-
-// MapSlice maps the provided slice.
-func MapSlice(slice interface{}, fn func(i int) string) []string {
-	var res []string
-	switch reflect.TypeOf(slice).Kind() {
-	case reflect.Slice:
-		rv := reflect.ValueOf(slice)
-
-		for i := 0; i < rv.Len(); i++ {
-			res = append(res, fn(i))
-		}
-	default:
-		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
-	}
-	return res
-}
-
-// FilterSlice filters the provided slice.
-func FilterSlice(slice interface{}, fn func(i int) bool) interface{} {
-	// TODO: improve and test this func
-	var result reflect.Value
-
-	switch reflect.TypeOf(slice).Kind() {
-	case reflect.Slice:
-		rv := reflect.ValueOf(slice)
-
-		myType := reflect.TypeOf(slice).Elem()
-		result = reflect.MakeSlice(reflect.SliceOf(myType), 0, 0)
-
-		for i := 0; i < rv.Len(); i++ {
-			include := fn(i)
-			if include {
-				result = reflect.Append(result, rv.Index(i))
-			}
-		}
-	default:
-		panic(Sf("Expected a slice, but got a %s", reflect.TypeOf(slice).Kind()))
-	}
-	return result.Interface()
 }
