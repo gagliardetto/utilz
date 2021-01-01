@@ -175,10 +175,7 @@ func passThroughFilter(reflect.Value) bool {
 
 // nilFilter excludes nil values.
 func nilFilter(rv reflect.Value) bool {
-	if rv.Interface() != nil {
-		return true
-	}
-	return false
+	return rv.Interface() != nil
 }
 func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Value) bool) (interface{}, error) {
 	// mapper must be a func:
