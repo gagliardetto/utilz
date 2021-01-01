@@ -186,6 +186,9 @@ var integerType = reflect.ValueOf(emptyInt).Type()
 var emptyBool bool
 var boolType = reflect.ValueOf(emptyBool).Type()
 
+var emptyString string
+var stringType = reflect.ValueOf(emptyString).Type()
+
 func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Value) bool) (interface{}, error) {
 	// mapper must be a func:
 	if mapperKind := reflect.TypeOf(mapper).Kind(); mapperKind != reflect.Func {
@@ -396,7 +399,7 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 	}
 	// filter return type must be a bool:
 	if !reflect.DeepEqual(outType, boolType) {
-		return nil, fmt.Errorf("filter func return arg must be a bool, but got %s", outType.Kind())
+		return nil, fmt.Errorf("filter func return arg must be a bool, but got %s", outType)
 	}
 
 	numIn := ff.Type().NumIn()
@@ -498,6 +501,194 @@ func example_Filter() {
 			}
 			return false
 		}).(map[string]interface{})
+		spew.Dump(out)
+	}
+}
+
+// Unique returns a deduplicated copy of the provided slice/array/map.
+func Unique(cont interface{}, idGetter interface{}) interface{} {
+	res, err := doUnique(cont, idGetter)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+func doUnique(cont interface{}, idGetter interface{}) (interface{}, error) {
+	// idGetter must be a func:
+	if mapperKind := reflect.TypeOf(idGetter).Kind(); mapperKind != reflect.Func {
+		return nil, fmt.Errorf("idGetter is not a func, but a %s", mapperKind)
+	}
+
+	ff := reflect.ValueOf(idGetter)
+	containerType := reflect.TypeOf(cont)
+	inType0 := ff.Type().In(0)
+	outType := ff.Type().Out(0)
+
+	// idGetter must have one parameter:
+	if ff.Type().NumIn() != 1 && ff.Type().NumIn() != 2 {
+		return nil, fmt.Errorf("wrong number of parameters for idGetter func: want 1 or 2, got %v", ff.Type().NumIn())
+	}
+	// idGetter must have one return value:
+	if ff.Type().NumOut() != 1 {
+		return nil, fmt.Errorf("wrong number of return arguments for idGetter func: want 1, got %v", ff.Type().NumOut())
+	}
+	// idGetter return type must be a string:
+	if !reflect.DeepEqual(outType, stringType) {
+		return nil, fmt.Errorf("idGetter func return arg must be a string, but got %s", outType)
+	}
+
+	numIn := ff.Type().NumIn()
+	if numIn == 2 {
+		inType1 := ff.Type().In(1)
+		if !reflect.DeepEqual(inType1, containerType.Elem()) {
+			return nil, fmt.Errorf("idGetter func arg[1] type must be a %s, but got %s", containerType.Elem(), inType1)
+		}
+	}
+
+	rv := reflect.ValueOf(cont)
+	storeIndex := hashsearch.New()
+
+	switch containerType.Kind() {
+	case reflect.Slice, reflect.Array:
+		{
+			resultSlice := reflect.MakeSlice(reflect.SliceOf(containerType.Elem()), 0, 0)
+			if !reflect.DeepEqual(inType0, integerType) {
+				return nil, fmt.Errorf("idGetter func arg type must be an int, but got %s", inType0)
+			}
+			// Iterate over the slice/array, and call the idGetter:
+			for index := 0; index < rv.Len(); index++ {
+				callParams := []reflect.Value{reflect.ValueOf(index)}
+				if numIn == 2 {
+					callParams = append(callParams, rv.Index(index))
+				}
+				id := ff.Call(callParams)[0]
+				if !storeIndex.Has(id.String()) {
+					resultSlice = reflect.Append(resultSlice, rv.Index(index))
+					storeIndex.OrderedAppend(id.String())
+				}
+			}
+			return resultSlice.Interface(), nil
+		}
+	case reflect.Map:
+		{
+			mapKeyType := containerType.Key()
+			if !reflect.DeepEqual(inType0, mapKeyType) {
+				return nil, fmt.Errorf("idGetter func arg type (%s) must be same as map key type (%s)", inType0, mapKeyType)
+			}
+			resultMap := reflect.MakeMapWithSize(containerType, 0)
+			// Iterate over the map, and call the idGetter:
+			for _, key := range rv.MapKeys() {
+				callParams := []reflect.Value{key}
+				if numIn == 2 {
+					callParams = append(callParams, rv.MapIndex(key))
+				}
+				id := ff.Call(callParams)[0]
+				if !storeIndex.Has(id.String()) {
+					resultMap.SetMapIndex(key, rv.MapIndex(key))
+					storeIndex.OrderedAppend(id.String())
+				}
+			}
+			return resultMap.Interface(), nil
+		}
+	default:
+		return nil, fmt.Errorf("Expected a slice/array/map, but got %s", containerType.Kind())
+	}
+}
+func example_Unique() {
+	{
+		sl := []string{
+			"a",
+			"b",
+			"b",
+			"b",
+			"b",
+			"c",
+			"c",
+			"c",
+			"c",
+			"d",
+			"d",
+			"d",
+			"d",
+			"c",
+			"c",
+			"c",
+			"c",
+			"b",
+			"b",
+			"b",
+		}
+		out := Unique(sl, func(i int) string {
+			return sl[i]
+		}).([]string)
+		spew.Dump(out)
+	}
+	{
+		mp := map[string]string{
+			"hello":   "world",
+			"foo":     "bar",
+			"foo-dup": "bar",
+		}
+		out := Unique(mp, func(key string, val string) string {
+			return val
+		}).(map[string]string)
+		spew.Dump(out)
+	}
+}
+
+type MR struct {
+	v interface{}
+}
+
+func NewMR(v interface{}) *MR {
+	return &MR{
+		v: v,
+	}
+}
+
+//
+func (mr *MR) Map(mapper interface{}) *MR {
+	return &MR{
+		v: Map(mr.v, mapper),
+	}
+}
+
+//
+func (mr *MR) Filter(filter interface{}) *MR {
+	return &MR{
+		v: Filter(mr.v, filter),
+	}
+}
+
+//
+func (mr *MR) Unique(idGetter interface{}) *MR {
+	return &MR{
+		v: Unique(mr.v, idGetter),
+	}
+}
+
+//
+func (mr *MR) Out() interface{} {
+	return mr.v
+}
+
+func example_MR() {
+	{
+		sl := []string{"a", "b", "a", "c", "b", "b", "b"}
+		out := NewMR(sl).
+			Map(func(i int, v string) string {
+				return v
+			}).
+			Filter(func(i int, v string) bool {
+				return v > "a"
+			}).
+			Map(func(i int, v string) string {
+				return v + "+"
+			}).
+			Unique(func(key int, v string) string {
+				return v + "+"
+			}).
+			Out().([]string)
 		spew.Dump(out)
 	}
 }
