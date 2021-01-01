@@ -177,6 +177,10 @@ func passThroughFilter(reflect.Value) bool {
 func nilFilter(rv reflect.Value) bool {
 	return rv.Interface() != nil
 }
+
+var emptyInt int
+var integerType = reflect.ValueOf(emptyInt).Type()
+
 func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Value) bool) (interface{}, error) {
 	// mapper must be a func:
 	if mapperKind := reflect.TypeOf(mapper).Kind(); mapperKind != reflect.Func {
@@ -201,7 +205,7 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 
 	switch containerType.Kind() {
 	case reflect.Slice, reflect.Array:
-		if inType.Kind() != reflect.Int {
+		if !reflect.DeepEqual(inType, integerType) {
 			return nil, fmt.Errorf("mapper func arg must be an int, but got %s", inType.Kind())
 		}
 		// Iterate over the slice/array, and call the mapper:
