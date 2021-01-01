@@ -202,10 +202,16 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 	}
 
 	containerType := reflect.TypeOf(cont)
-	inType := ff.Type().In(0)
+	inType0 := ff.Type().In(0)
 	outType0 := ff.Type().Out(0)
 
 	numIn := ff.Type().NumIn()
+	if numIn == 2 {
+		inType1 := ff.Type().In(1)
+		if !reflect.DeepEqual(inType1, containerType.Elem()) {
+			return nil, fmt.Errorf("mapper func arg[1] type must be a %s, but got %s", containerType.Elem(), inType1)
+		}
+	}
 
 	rv := reflect.ValueOf(cont)
 	switch ff.Type().NumOut() {
@@ -215,8 +221,8 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 
 			switch containerType.Kind() {
 			case reflect.Slice, reflect.Array:
-				if !reflect.DeepEqual(inType, integerType) {
-					return nil, fmt.Errorf("mapper func arg must be an int, but got %s", inType.Kind())
+				if !reflect.DeepEqual(inType0, integerType) {
+					return nil, fmt.Errorf("mapper func arg type must be an int, but got %s", inType0)
 				}
 				// Iterate over the slice/array, and call the mapper:
 				for index := 0; index < rv.Len(); index++ {
@@ -231,8 +237,8 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 				}
 			case reflect.Map:
 				mapKeyType := containerType.Key()
-				if !reflect.DeepEqual(inType, mapKeyType) {
-					return nil, fmt.Errorf("mapper func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
+				if !reflect.DeepEqual(inType0, mapKeyType) {
+					return nil, fmt.Errorf("mapper func arg type (%s) must be same as map key type (%s)", inType0, mapKeyType)
 				}
 				// Iterate over the map, and call the mapper:
 				for _, key := range rv.MapKeys() {
@@ -259,8 +265,8 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 
 			switch containerType.Kind() {
 			case reflect.Slice, reflect.Array:
-				if !reflect.DeepEqual(inType, integerType) {
-					return nil, fmt.Errorf("mapper func arg must be an int, but got %s", inType.Kind())
+				if !reflect.DeepEqual(inType0, integerType) {
+					return nil, fmt.Errorf("mapper func arg type must be an int, but got %s", inType0)
 				}
 				// Iterate over the slice/array, and call the mapper:
 				for index := 0; index < rv.Len(); index++ {
@@ -274,8 +280,8 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 				}
 			case reflect.Map:
 				mapKeyType := containerType.Key()
-				if !reflect.DeepEqual(inType, mapKeyType) {
-					return nil, fmt.Errorf("mapper func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
+				if !reflect.DeepEqual(inType0, mapKeyType) {
+					return nil, fmt.Errorf("mapper func arg type (%s) must be same as map key type (%s)", inType0, mapKeyType)
 				}
 				// Iterate over the map, and call the mapper:
 				for _, key := range rv.MapKeys() {
@@ -377,7 +383,7 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 
 	ff := reflect.ValueOf(filter)
 	containerType := reflect.TypeOf(cont)
-	inType := ff.Type().In(0)
+	inType0 := ff.Type().In(0)
 	outType := ff.Type().Out(0)
 
 	// filter must have one parameter:
@@ -394,14 +400,21 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 	}
 
 	numIn := ff.Type().NumIn()
+	if numIn == 2 {
+		inType1 := ff.Type().In(1)
+		if !reflect.DeepEqual(inType1, containerType.Elem()) {
+			return nil, fmt.Errorf("filter func arg[1] type must be a %s, but got %s", containerType.Elem(), inType1)
+		}
+	}
+
 	rv := reflect.ValueOf(cont)
 
 	switch containerType.Kind() {
 	case reflect.Slice, reflect.Array:
 		{
 			resultSlice := reflect.MakeSlice(reflect.SliceOf(containerType.Elem()), 0, 0)
-			if !reflect.DeepEqual(inType, integerType) {
-				return nil, fmt.Errorf("filter func arg must be an int, but got %s", inType.Kind())
+			if !reflect.DeepEqual(inType0, integerType) {
+				return nil, fmt.Errorf("filter func arg type must be an int, but got %s", inType0)
 			}
 			// Iterate over the slice/array, and call the filter:
 			for index := 0; index < rv.Len(); index++ {
@@ -419,8 +432,8 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 	case reflect.Map:
 		{
 			mapKeyType := containerType.Key()
-			if !reflect.DeepEqual(inType, mapKeyType) {
-				return nil, fmt.Errorf("filter func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
+			if !reflect.DeepEqual(inType0, mapKeyType) {
+				return nil, fmt.Errorf("filter func arg type (%s) must be same as map key type (%s)", inType0, mapKeyType)
 			}
 			resultMap := reflect.MakeMapWithSize(containerType, 0)
 			// Iterate over the map, and call the filter:
