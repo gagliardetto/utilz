@@ -193,8 +193,8 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 	}
 	ff := reflect.ValueOf(mapper)
 	// mapper must have one parameter:
-	if ff.Type().NumIn() != 1 {
-		return nil, fmt.Errorf("wrong number of parameters for mapper func: want 1, got %v", ff.Type().NumIn())
+	if ff.Type().NumIn() != 1 && ff.Type().NumIn() != 2 {
+		return nil, fmt.Errorf("wrong number of parameters for mapper func: want 1 or 2, got %v", ff.Type().NumIn())
 	}
 	// mapper must have one return value:
 	if ff.Type().NumOut() != 1 && ff.Type().NumOut() != 2 {
@@ -204,6 +204,8 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 	containerType := reflect.TypeOf(cont)
 	inType := ff.Type().In(0)
 	outType0 := ff.Type().Out(0)
+
+	numIn := ff.Type().NumIn()
 
 	rv := reflect.ValueOf(cont)
 	switch ff.Type().NumOut() {
@@ -218,7 +220,11 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 				}
 				// Iterate over the slice/array, and call the mapper:
 				for index := 0; index < rv.Len(); index++ {
-					returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})[0]
+					callParams := []reflect.Value{reflect.ValueOf(index)}
+					if numIn == 2 {
+						callParams = append(callParams, rv.Index(index))
+					}
+					returned := ff.Call(callParams)[0]
 					if filter(returned) {
 						resultSlice = reflect.Append(resultSlice, returned)
 					}
@@ -230,7 +236,11 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 				}
 				// Iterate over the map, and call the mapper:
 				for _, key := range rv.MapKeys() {
-					returned := ff.Call([]reflect.Value{key})[0]
+					callParams := []reflect.Value{key}
+					if numIn == 2 {
+						callParams = append(callParams, rv.MapIndex(key))
+					}
+					returned := ff.Call(callParams)[0]
 					if filter(returned) {
 						resultSlice = reflect.Append(resultSlice, returned)
 					}
@@ -254,7 +264,11 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 				}
 				// Iterate over the slice/array, and call the mapper:
 				for index := 0; index < rv.Len(); index++ {
-					returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})
+					callParams := []reflect.Value{reflect.ValueOf(index)}
+					if numIn == 2 {
+						callParams = append(callParams, rv.Index(index))
+					}
+					returned := ff.Call(callParams)
 					key, value := returned[0], returned[1]
 					resultMap.SetMapIndex(key, value)
 				}
@@ -265,7 +279,11 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 				}
 				// Iterate over the map, and call the mapper:
 				for _, key := range rv.MapKeys() {
-					returned := ff.Call([]reflect.Value{key})
+					callParams := []reflect.Value{key}
+					if numIn == 2 {
+						callParams = append(callParams, rv.MapIndex(key))
+					}
+					returned := ff.Call(callParams)
 					key, value := returned[0], returned[1]
 					resultMap.SetMapIndex(key, value)
 				}
@@ -363,8 +381,8 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 	outType := ff.Type().Out(0)
 
 	// filter must have one parameter:
-	if ff.Type().NumIn() != 1 {
-		return nil, fmt.Errorf("wrong number of parameters for filter func: want 1, got %v", ff.Type().NumIn())
+	if ff.Type().NumIn() != 1 && ff.Type().NumIn() != 2 {
+		return nil, fmt.Errorf("wrong number of parameters for filter func: want 1 or 2, got %v", ff.Type().NumIn())
 	}
 	// filter must have one return value:
 	if ff.Type().NumOut() != 1 {
@@ -375,6 +393,7 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("filter func return arg must be a bool, but got %s", outType.Kind())
 	}
 
+	numIn := ff.Type().NumIn()
 	rv := reflect.ValueOf(cont)
 
 	switch containerType.Kind() {
@@ -386,7 +405,11 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 			}
 			// Iterate over the slice/array, and call the filter:
 			for index := 0; index < rv.Len(); index++ {
-				returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})[0]
+				callParams := []reflect.Value{reflect.ValueOf(index)}
+				if numIn == 2 {
+					callParams = append(callParams, rv.Index(index))
+				}
+				returned := ff.Call(callParams)[0]
 				if returned.Bool() {
 					resultSlice = reflect.Append(resultSlice, rv.Index(index))
 				}
@@ -402,7 +425,11 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 			resultMap := reflect.MakeMapWithSize(containerType, 0)
 			// Iterate over the map, and call the filter:
 			for _, key := range rv.MapKeys() {
-				returned := ff.Call([]reflect.Value{key})[0]
+				callParams := []reflect.Value{key}
+				if numIn == 2 {
+					callParams = append(callParams, rv.MapIndex(key))
+				}
+				returned := ff.Call(callParams)[0]
 				if returned.Bool() {
 					resultMap.SetMapIndex(key, rv.MapIndex(key))
 				}
