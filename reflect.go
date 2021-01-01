@@ -160,7 +160,8 @@ func FilterSlice(slice interface{}, fn func(i int) bool) interface{} {
 // Map maps a slice/array/map. The mapper must be a function
 // with one parameter (an int for slices/arrays, or the map key type for maps),
 // and one return argument.
-// Map returns an array of the mapper return argument type.
+// If the mapper func has one return arg, then Map returns an array of the mapper return argument type;
+// if the mapper func has two return arguments, then Map returns a map with key the first return arg, and value the second return arg.
 func Map(elem interface{}, mapper interface{}) interface{} {
 	res, err := mapWithFilter(elem, mapper, passThroughFilter)
 	if err != nil {
@@ -196,85 +197,142 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 		return nil, fmt.Errorf("wrong number of parameters for mapper func: want 1, got %v", ff.Type().NumIn())
 	}
 	// mapper must have one return value:
-	if ff.Type().NumOut() != 1 {
-		return nil, fmt.Errorf("wrong number of return arguments for mapper func: want 1, got %v", ff.Type().NumOut())
+	if ff.Type().NumOut() != 1 && ff.Type().NumOut() != 2 {
+		return nil, fmt.Errorf("wrong number of return arguments for mapper func: want 1 or 2, got %v", ff.Type().NumOut())
 	}
 
 	containerType := reflect.TypeOf(cont)
 	inType := ff.Type().In(0)
-	outType := ff.Type().Out(0)
+	outType0 := ff.Type().Out(0)
 
 	rv := reflect.ValueOf(cont)
-	result := reflect.MakeSlice(reflect.SliceOf(outType), 0, 0)
+	switch ff.Type().NumOut() {
+	case 1:
+		{
+			resultSlice := reflect.MakeSlice(reflect.SliceOf(outType0), 0, 0)
 
-	switch containerType.Kind() {
-	case reflect.Slice, reflect.Array:
-		if !reflect.DeepEqual(inType, integerType) {
-			return nil, fmt.Errorf("mapper func arg must be an int, but got %s", inType.Kind())
-		}
-		// Iterate over the slice/array, and call the mapper:
-		for index := 0; index < rv.Len(); index++ {
-			returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})[0]
-			if filter(returned) {
-				result = reflect.Append(result, returned)
+			switch containerType.Kind() {
+			case reflect.Slice, reflect.Array:
+				if !reflect.DeepEqual(inType, integerType) {
+					return nil, fmt.Errorf("mapper func arg must be an int, but got %s", inType.Kind())
+				}
+				// Iterate over the slice/array, and call the mapper:
+				for index := 0; index < rv.Len(); index++ {
+					returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})[0]
+					if filter(returned) {
+						resultSlice = reflect.Append(resultSlice, returned)
+					}
+				}
+			case reflect.Map:
+				mapKeyType := containerType.Key()
+				if !reflect.DeepEqual(inType, mapKeyType) {
+					return nil, fmt.Errorf("mapper func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
+				}
+				// Iterate over the map, and call the mapper:
+				for _, key := range rv.MapKeys() {
+					returned := ff.Call([]reflect.Value{key})[0]
+					if filter(returned) {
+						resultSlice = reflect.Append(resultSlice, returned)
+					}
+				}
 			}
+			return resultSlice.Interface(), nil
 		}
-	case reflect.Map:
-		mapKeyType := containerType.Key()
-		if !reflect.DeepEqual(inType, mapKeyType) {
-			return nil, fmt.Errorf("mapper func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
-		}
-		// Iterate over the map, and call the mapper:
-		for _, key := range rv.MapKeys() {
-			returned := ff.Call([]reflect.Value{key})[0]
-			if filter(returned) {
-				result = reflect.Append(result, returned)
+	case 2:
+		{
+			outType1 := ff.Type().Out(1)
+
+			var keyType = outType0
+			var valueType = outType1
+			var aMapType = reflect.MapOf(keyType, valueType)
+			resultMap := reflect.MakeMapWithSize(aMapType, 0)
+
+			switch containerType.Kind() {
+			case reflect.Slice, reflect.Array:
+				if !reflect.DeepEqual(inType, integerType) {
+					return nil, fmt.Errorf("mapper func arg must be an int, but got %s", inType.Kind())
+				}
+				// Iterate over the slice/array, and call the mapper:
+				for index := 0; index < rv.Len(); index++ {
+					returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})
+					key, value := returned[0], returned[1]
+					resultMap.SetMapIndex(key, value)
+				}
+			case reflect.Map:
+				mapKeyType := containerType.Key()
+				if !reflect.DeepEqual(inType, mapKeyType) {
+					return nil, fmt.Errorf("mapper func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
+				}
+				// Iterate over the map, and call the mapper:
+				for _, key := range rv.MapKeys() {
+					returned := ff.Call([]reflect.Value{key})
+					key, value := returned[0], returned[1]
+					resultMap.SetMapIndex(key, value)
+				}
 			}
+
+			return resultMap.Interface(), nil
 		}
 	}
-	return result.Interface(), nil
+	return nil, nil
 }
 func example_Map() {
+	// Map to a slice:
 	{
-		sl := []string{"a", "b"}
-		out := Map(sl, func(i int) string {
-			return sl[i]
-		}).([]string)
-		spew.Dump(out)
-	}
-	{
-		sl := []int{1, 2}
-		out := Map(sl, func(i int) int {
-			return sl[i]
-		}).([]int)
-		spew.Dump(out)
-	}
-	{
-		sl := [2]int{333, 444}
-		out := Map(sl, func(i int) int {
-			return sl[i]
-		}).([]int)
-		spew.Dump(out)
-	}
-	{
-		mp := map[string]string{
-			"hello": "world",
-			"foo":   "bar",
+		{
+			sl := []string{"a", "b"}
+			out := Map(sl, func(i int) string {
+				return sl[i]
+			}).([]string)
+			spew.Dump(out)
 		}
-		out := Map(mp, func(key string) string {
-			return key
-		}).([]string)
-		spew.Dump(out)
-	}
-	{
-		mp := map[string]interface{}{
-			"alpha": nil,
-			"beta":  "bar",
+		{
+			sl := []int{1, 2}
+			out := Map(sl, func(i int) int {
+				return sl[i]
+			}).([]int)
+			spew.Dump(out)
 		}
-		out := Map(mp, func(key string) interface{} {
-			return mp[key]
-		}).([]interface{})
-		spew.Dump(out)
+		{
+			sl := [2]int{333, 444}
+			out := Map(sl, func(i int) int {
+				return sl[i]
+			}).([]int)
+			spew.Dump(out)
+		}
+		{
+			mp := map[string]string{
+				"hello": "world",
+				"foo":   "bar",
+			}
+			out := Map(mp, func(key string) string {
+				return key
+			}).([]string)
+			spew.Dump(out)
+		}
+		{
+			mp := map[string]interface{}{
+				"alpha": nil,
+				"beta":  "bar",
+			}
+			out := Map(mp, func(key string) interface{} {
+				return mp[key]
+			}).([]interface{})
+			spew.Dump(out)
+		}
+	}
+	// Map to a map:
+	{
+		{
+			mp := map[string]interface{}{
+				"alpha": nil,
+				"beta":  "bar",
+			}
+			out := Map(mp, func(key string) (string, string) {
+				return "hello-" + key, "world-" + key
+			}).(map[string]string)
+			spew.Dump(out)
+		}
 	}
 }
 
