@@ -273,8 +273,9 @@ func mapWithFilter(cont interface{}, mapper interface{}, filter func(reflect.Val
 
 			return resultMap.Interface(), nil
 		}
+	default:
+		return nil, fmt.Errorf("Expected a slice/array/map, but got %s", containerType.Kind())
 	}
-	return nil, nil
 }
 func example_Map() {
 	// Map to a slice:
@@ -340,7 +341,9 @@ func example_Map() {
 // The filter must be a function
 // with one parameter (an int for slices/arrays, or the map key type for maps),
 // and one return argument (a bool).
-// Filter returns an array of the slice/array/map element type.
+// Filter returns the same type ast the provided value, only with elements
+// included by the filter.
+// NOTE: arrays become slices.
 func Filter(cont interface{}, filter interface{}) interface{} {
 	out, err := doFilter(cont, filter)
 	if err != nil {
@@ -373,34 +376,42 @@ func doFilter(cont interface{}, filter interface{}) (interface{}, error) {
 	}
 
 	rv := reflect.ValueOf(cont)
-	result := reflect.MakeSlice(reflect.SliceOf(containerType.Elem()), 0, 0)
 
 	switch containerType.Kind() {
 	case reflect.Slice, reflect.Array:
-		if !reflect.DeepEqual(inType, integerType) {
-			return nil, fmt.Errorf("filter func arg must be an int, but got %s", inType.Kind())
-		}
-		// Iterate over the slice/array, and call the filter:
-		for index := 0; index < rv.Len(); index++ {
-			returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})[0]
-			if returned.Bool() {
-				result = reflect.Append(result, rv.Index(index))
+		{
+			resultSlice := reflect.MakeSlice(reflect.SliceOf(containerType.Elem()), 0, 0)
+			if !reflect.DeepEqual(inType, integerType) {
+				return nil, fmt.Errorf("filter func arg must be an int, but got %s", inType.Kind())
 			}
+			// Iterate over the slice/array, and call the filter:
+			for index := 0; index < rv.Len(); index++ {
+				returned := ff.Call([]reflect.Value{reflect.ValueOf(index)})[0]
+				if returned.Bool() {
+					resultSlice = reflect.Append(resultSlice, rv.Index(index))
+				}
+			}
+			return resultSlice.Interface(), nil
 		}
 	case reflect.Map:
-		mapKeyType := containerType.Key()
-		if !reflect.DeepEqual(inType, mapKeyType) {
-			return nil, fmt.Errorf("filter func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
-		}
-		// Iterate over the map, and call the filter:
-		for _, key := range rv.MapKeys() {
-			returned := ff.Call([]reflect.Value{key})[0]
-			if returned.Bool() {
-				result = reflect.Append(result, rv.MapIndex(key))
+		{
+			mapKeyType := containerType.Key()
+			if !reflect.DeepEqual(inType, mapKeyType) {
+				return nil, fmt.Errorf("filter func arg type (%s) must be same as map key type (%s)", inType, mapKeyType)
 			}
+			resultMap := reflect.MakeMapWithSize(containerType, 0)
+			// Iterate over the map, and call the filter:
+			for _, key := range rv.MapKeys() {
+				returned := ff.Call([]reflect.Value{key})[0]
+				if returned.Bool() {
+					resultMap.SetMapIndex(key, rv.MapIndex(key))
+				}
+			}
+			return resultMap.Interface(), nil
 		}
+	default:
+		return nil, fmt.Errorf("Expected a slice/array/map, but got %s", containerType.Kind())
 	}
-	return result.Interface(), nil
 }
 func example_Filter() {
 	{
@@ -431,7 +442,7 @@ func example_Filter() {
 		}
 		out := Filter(mp, func(key string) bool {
 			return key == "foo"
-		}).([]string)
+		}).(map[string]string)
 		spew.Dump(out)
 	}
 	{
@@ -446,7 +457,7 @@ func example_Filter() {
 				return strings.Contains(val, "-value")
 			}
 			return false
-		}).([]interface{})
+		}).(map[string]interface{})
 		spew.Dump(out)
 	}
 }
