@@ -685,8 +685,11 @@ func example_MR() {
 			Map(func(i int, v string) string {
 				return v + "+"
 			}).
+			Map(func(i int, v string) string {
+				return v + "="
+			}).
 			Unique(func(key int, v string) string {
-				return v + "+"
+				return v
 			}).
 			Out().([]string)
 		spew.Dump(out)
