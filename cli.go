@@ -76,7 +76,7 @@ func CLIMustConfirmYes(message string) {
 		panic(err)
 	}
 	if !doContinue {
-		fmt.Println("aborting")
+		Ln(Orange("Aborting"))
 		os.Exit(0)
 	}
 }
