@@ -466,3 +466,18 @@ func ToLower(s string) string {
 func ToTitle(s string) string {
 	return strings.ToTitle(s)
 }
+func ToStringKeyVals(keyvals ...string) (keys []string, vals []string) {
+	if len(keyvals) == 0 {
+		return
+	}
+	for i := 0; i < len(keyvals); i += 2 {
+		k := keyvals[i]
+		var v = "MISSING"
+		if i+1 < len(keyvals) {
+			v = keyvals[i+1]
+		}
+		keys = append(keys, k)
+		vals = append(vals, v)
+	}
+	return
+}
