@@ -54,7 +54,7 @@ func toCamelInitCase(s string, initCase bool) string {
 				n += string(v)
 			}
 		}
-		if v == '_' || v == ' ' || v == '-' || v == '.' || v == '/' || v == '\\' {
+		if v == '_' || v == ' ' || v == '-' || v == '.' || v == '/' || v == '\\' || v == '@' {
 			capNext = true
 		} else {
 			capNext = false
