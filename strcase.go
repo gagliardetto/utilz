@@ -30,14 +30,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-var uppercaseAcronym = map[string]bool{
-	"ID":   true,
-	"HTTP": true,
-	"HTTS": true,
-	"IDL":  true,
-	"TLS":  true,
-}
-
 // Converts a string to CamelCase
 func toCamelInitCase(s string, initCase bool) string {
 	s = addWordBoundariesToNumbers(s)
@@ -58,6 +50,7 @@ func toCamelInitCase(s string, initCase bool) string {
 				n += string(v)
 			}
 		}
+		// !unicode.IsLetter(v) && !unicode.IsNumber(v)
 		if v == '_' || v == ' ' || v == '-' || v == '.' || v == '/' || v == '\\' || v == '@' {
 			capNext = true
 		} else {
@@ -68,20 +61,36 @@ func toCamelInitCase(s string, initCase bool) string {
 }
 
 // ToCamel converts a string to CamelCase
-func ToCamel(s string) string {
-	if uppercaseAcronym[s] {
+func ToCamelWithAcronyms(
+	s string,
+	acronyms map[string]bool,
+) string {
+	if acronyms[s] {
 		s = strings.ToLower(s)
 	}
+	return ToCamel(s)
+}
+
+// ToCamel converts a string to CamelCase
+func ToCamel(s string) string {
 	return toCamelInitCase(s, true)
+}
+
+// ToLowerCamel converts a string to lowerCamelCase
+func ToLowerCamelWithAcronyms(
+	s string,
+	acronyms map[string]bool,
+) string {
+	if acronyms[s] {
+		s = strings.ToLower(s)
+	}
+	return ToLowerCamel(s)
 }
 
 // ToLowerCamel converts a string to lowerCamelCase
 func ToLowerCamel(s string) string {
 	if s == "" {
 		return s
-	}
-	if uppercaseAcronym[s] {
-		s = strings.ToLower(s)
 	}
 	if r := rune(s[0]); r >= 'A' && r <= 'Z' {
 		s = strings.ToLower(string(r)) + s[1:]
