@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"hash/maphash"
+	"hash"
+	"hash/fnv"
 	"math"
 	"os"
 	"path/filepath"
@@ -486,24 +487,17 @@ var hasherPool *sync.Pool
 func init() {
 	hasherPool = &sync.Pool{
 		New: func() interface{} {
-			return &maphash.Hash{}
+			return fnv.New64a()
 		},
 	}
 }
+
 func HashString(s string) uint64 {
-	h := hasherPool.Get().(*maphash.Hash)
-
-	defer hasherPool.Put(h)
-	h.Reset()
-	_, err := h.WriteString(s)
-	if err != nil {
-		panic(err)
-	}
-
-	return h.Sum64()
+	return HashBytes([]byte(s))
 }
+
 func HashBytes(b []byte) uint64 {
-	h := hasherPool.Get().(*maphash.Hash)
+	h := hasherPool.Get().(hash.Hash64)
 
 	defer hasherPool.Put(h)
 	h.Reset()
@@ -514,6 +508,7 @@ func HashBytes(b []byte) uint64 {
 
 	return h.Sum64()
 }
+
 func HashAnyWithJSON(v interface{}) (uint64, error) {
 	// NOTE: this relies on the feature of json.Marshal that
 	// sorts map keys in a constant way.
