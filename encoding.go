@@ -143,3 +143,24 @@ func MustAtoi(s string) int {
 	}
 	return i
 }
+
+func MustSaveAsIndentedJSON(v interface{}, filepath string) {
+	err := SaveAsIndentedJSON(v, filepath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func MustSaveAsJSON(v interface{}, filepath string) {
+	err := SaveAsJSON(v, filepath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func MustLoadJSON(ptr interface{}, filepath string) {
+	err := LoadJSON(ptr, filepath)
+	if err != nil {
+		panic(err)
+	}
+}
